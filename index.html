@@ -5,19 +5,75 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ESP32 Buzzer Control</title>
     <style>
-        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
-        button { padding: 15px 30px; font-size: 1.2em; cursor: pointer; }
-        #status { margin-top: 20px; font-style: italic; color: grey; }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .button-container {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        #buzzerOnButton {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #buzzerOffButton {
+            background-color: #f44336;
+            color: white;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        .status-container {
+            margin-top: 20px;
+        }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
+    <!-- Import Paho MQTT library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
 </head>
 <body>
-    <h1>ESP32 Buzzer Control</h1>
-
-    <button id="buzzerOnButton">Turn Buzzer ON</button>
-    <button id="buzzerOffButton">Turn Buzzer OFF</button>
-
-    <div id="status">Connecting to MQTT Broker...</div>
+    <div class="container">
+        <h1>ESP32 Buzzer Control</h1>
+        
+        <div class="status-container">
+            <div id="status">Connecting to MQTT Broker...</div>
+        </div>
+        
+        <div class="button-container">
+            <button id="buzzerOnButton">Turn Buzzer ON</button>
+            <button id="buzzerOffButton">Turn Buzzer OFF</button>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
