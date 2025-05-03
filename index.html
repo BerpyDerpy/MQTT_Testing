@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Buzzer Control</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+        button { padding: 15px 30px; font-size: 1.2em; cursor: pointer; }
+        #status { margin-top: 20px; font-style: italic; color: grey; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
+</head>
+<body>
+    <h1>ESP32 Buzzer Control</h1>
+
+    <button id="buzzerOnButton">Turn Buzzer ON</button>
+    <button id="buzzerOffButton">Turn Buzzer OFF</button>
+
+    <div id="status">Connecting to MQTT Broker...</div>
+
+    <script src="script.js"></script>
+</body>
+</html>
