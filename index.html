@@ -24,8 +24,9 @@
     <div class="controls">
         <h2>Buzzer Controls</h2>
         <div class="buzzer-controls">
-            <button onclick="publishBuzzerCommand('on')">Buzzer ON</button>
-            <button class="off" onclick="publishBuzzerCommand('off')">Buzzer OFF</button>
+            <button onclick="buzzer('buzz')">Buzz</button>
+            <button onclick="buzzer('on')">Buzzer On</button>
+            <button onclick="buzzer('off')">Buzzer Off</button>
         </div>
     </div>
 
@@ -33,45 +34,11 @@
 
     <script>
        
-        const MQTT_BROKER_HOST = "https://raspberrypi-rover-mqtt.at.remote.it"; 
-        const MQTT_BROKER_PORT = 33000; 
-        const MQTT_BUZZER_TOPIC = "rover/buzzer"; // Topic for buzzer commands
+        const client = mqtt.connect('ws://YOUR_SERVICE_URL:YOUR_WEBSOCKET_PORT')
 
-        let client;
-
-        function connectMqtt() {
-            client = mqtt.connect({
-                host: MQTT_BROKER_HOST,
-                port: MQTT_BROKER_PORT,
-                protocol: 'ws', // Use websockets when connecting from a browser
-                // For anonymous access, no username/password needed
-            });
-
-            client.on('connect', function () {
-                console.log('Connected to MQTT broker');
-                document.getElementById('status').innerText = 'Connected to MQTT broker.';
-            });
-
-            client.on('error', function (error) {
-                console.error('MQTT error:', error);
-                document.getElementById('status').innerText = 'MQTT Error: ' + error.message;
-            });
-
-            client.on('close', function () {
-                console.log('MQTT connection closed. Attempting to reconnect...');
-                document.getElementById('status').innerText = 'MQTT Disconnected. Reconnecting...';
-                setTimeout(connectMqtt, 5000); // Attempt to reconnect after 5 seconds
-            });
-        }
-
-        function publishBuzzerCommand(command) {
-            if (client && client.connected) {
-                client.publish(MQTT_BUZZER_TOPIC, command);
-                console.log(`Published buzzer command: ${command}`);
-            } else {
-                console.warn('MQTT client not connected. Cannot publish command.');
-                document.getElementById('status').innerText = 'MQTT Not Connected! Check console for errors.';
-            }
+        function buzzer(action, duration = 0.5) {
+        const message = JSON.stringify({action, duration})
+        client.publish('rover/buzzer', message)
         }
 
         // Initialize MQTT connection when the page loads
