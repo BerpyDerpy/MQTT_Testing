@@ -18,7 +18,7 @@
 
     <div class="video-container">
         <h2>Live Video Feed</h2>
-        <img id="videoStream" src="https://raspberrypi-camera-server.at.remote.it" alt="Live Video Stream">
+        <img id="videoStream" src="https://raspberrypi-camera-server.at.remote.it:5000" alt="Live Video Stream">
     </div>
 
     <div class="controls">
@@ -33,7 +33,7 @@
 
     <script>
        
-        const MQTT_BROKER_HOST = "https://raspberrypi-rover-mqtt.at.remote.it"; 
+        const MQTT_BROKER_HOST = "https://raspberrypi-rover-mqtt.at.remote.it:33000"; 
         const MQTT_BROKER_PORT = 33000; 
         const MQTT_BUZZER_TOPIC = "rover/buzzer"; // Topic for buzzer commands
 
