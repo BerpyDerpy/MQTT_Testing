@@ -34,7 +34,7 @@
 
     <script>
        
-        const client = mqtt.connect('ws://YOUR_SERVICE_URL:YOUR_WEBSOCKET_PORT')
+        const client = mqtt.connect('https://raspberrypi-rover-mqtt.at.remote.it:33000')
 
         function buzzer(action, duration = 0.5) {
         const message = JSON.stringify({action, duration})
