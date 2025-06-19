@@ -1,95 +1,76 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MQTT Test via Remote.it</title>
-    <script src="https://unpkg.com/paho-mqtt@1.1.0/paho-mqtt.js"></script>
+    <title>MQTT Control Panel</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background-color: #f0f0f0; }
-        .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
-        h1 { color: #333; margin-bottom: 20px; }
-        button { background-color: #007bff; color: white; padding: 12px 25px; border: none; border-radius: 5px; font-size: 1.1em; cursor: pointer; transition: background-color 0.3s ease; }
-        button:hover { background-color: #0056b3; }
-        #status { margin-top: 20px; font-weight: bold; color: #555; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 2em; }
+        #status { margin-bottom: 1em; padding: 0.5em; border-radius: 4px; }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .controls { display: flex; flex-direction: column; gap: 10px; }
+        button { padding: 10px 15px; font-size: 16px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Send Message to Pi</h1>
-        <button id="sendMessageButton">Send</button>
-        <div id="status">Connecting...</div>
+    <h1>MQTT Control</h1>
+    <div id="status">Connecting...</div>
+
+    <div class="controls">
+        <button id="onButton">Turn LED ON</button>
+        <button id="offButton">Turn LED OFF</button>
     </div>
 
     <script>
-  
-        const brokerHost = "raspberrypi-https.at.remote.it";
-        const brokerPort = 33000; 
-        // ---------------------------------------------------------------------------------
+        // --- Configuration ---
+        const remoteItUrl = 'raspberrypi-mosquitto-wss.at.remote.it:33001'; 
 
-        const clientId = "github-pages-test-" + Math.random().toString(16).substr(2, 8);
-        const topic = "rpi/test";
-        const messagePayload = "Hello from GitHub Pages!";
+        
+        const brokerUrl = `wss://${remoteItUrl}`;
 
-        let client;
+        // --- MQTT Client Setup ---
+        const options = {
+            clientId: 'github_pages_' + Math.random().toString(16).substr(2, 8),
+        };
 
-        function connectMqtt() {
-            client = new Paho.Client(brokerHost, brokerPort, "/mqtt", clientId);
+        const statusDiv = document.getElementById('status');
+        const client = mqtt.connect(brokerUrl, options);
 
-            client.onConnectionLost = onConnectionLost;
-            client.onMessageArrived = onMessageArrived;
+        client.on('connect', () => {
+            console.log('Connected to MQTT broker!');
+            statusDiv.textContent = 'Connected';
+            statusDiv.className = 'connected';
+        });
 
-            const connectOptions = {
-                onSuccess: onConnectSuccess,
-                onFailure: onFailure,
-                useSSL: true, 
-                cleanSession: true
-            };
+        client.on('error', (err) => {
+            console.error('Connection error: ', err);
+            statusDiv.textContent = `Error: ${err.message}. Check the browser console (F12) for details.`;
+            statusDiv.className = 'disconnected';
+            client.end();
+        });
 
-            console.log(`Attempting to connect to wss://${brokerHost}:${brokerPort}/mqtt`);
-            client.connect(connectOptions);
-        }
+        client.on('reconnect', () => {
+            console.log('Reconnecting...');
+            statusDiv.textContent = 'Reconnecting...';
+            statusDiv.className = 'disconnected';
+        });
 
-        function onConnectSuccess() {
-            console.log("Connected to MQTT broker");
-            document.getElementById("status").innerText = "Status: Connected!";
-        }
-
-        function onFailure(responseObject) {
-            console.error("MQTT Connection failed: ", responseObject);
-            document.getElementById("status").innerText = "Status: Connection Failed! Check console for details.";
-        }
-
-        function onConnectionLost(responseObject) {
-            if (responseObject.errorCode !== 0) {
-                console.log("Connection lost: ", responseObject);
-                document.getElementById("status").innerText = "Status: Disconnected. Attempting reconnect...";
-                setTimeout(connectMqtt, 5000);
-            }
-        }
-
-        function onMessageArrived(message) {
-            console.log(`Message arrived: Topic='${message.destinationName}', Payload='${message.payloadString}'`);
-        }
-
-        function sendMessage() {
-            if (client && client.isConnected()) {
-                const message = new Paho.Message(messagePayload); // Corrected Paho.Message usage
-                message.destinationName = topic;
-                client.send(message);
-                console.log(`Sent message: "${messagePayload}" to topic "${topic}"`);
-                document.getElementById("status").innerText = `Sent: "${messagePayload}" to "${topic}"`;
+        // --- Button Controls ---
+        document.getElementById('onButton').addEventListener('click', () => {
+            if (client.connected) {
+                client.publish('home/livingroom/led', 'ON');
+                console.log('Published ON to home/livingroom/led');
             } else {
-                console.warn("Client not connected. Cannot send message.");
-                document.getElementById("status").innerText = "Status: Not Connected. Click Connect/Reload.";
+                alert('Not connected to MQTT broker.');
             }
-        }
+        });
 
-        document.addEventListener("DOMContentLoaded", () => {
-            connectMqtt();
-            const button = document.getElementById("sendMessageButton");
-            if (button) {
-                button.addEventListener("click", sendMessage);
+        document.getElementById('offButton').addEventListener('click', () => {
+            if (client.connected) {
+                client.publish('home/livingroom/led', 'OFF');
+                console.log('Published OFF to home/livingroom/led');
+            } else {
+                alert('Not connected to MQTT broker.');
             }
         });
     </script>
