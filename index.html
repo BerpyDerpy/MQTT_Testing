@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MQTT Test</title>
+    <title>MQTT Test via Remote.it</title>
     <script src="https://unpkg.com/paho-mqtt@1.1.0/paho-mqtt.js"></script>
     <style>
         body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background-color: #f0f0f0; }
@@ -17,24 +17,24 @@
 <body>
     <div class="container">
         <h1>Send Message to Pi</h1>
-        <button id="sendMessageButton">Send MQTT Test Message</button>
+        <button id="sendMessageButton">Send</button>
         <div id="status">Connecting...</div>
     </div>
 
     <script>
-       
-        const brokerHost = "raspberrypi-tcp.at.remote.it"; 
-        const brokerPort = 33000;
-        // ---------------------------------------------------------------
+  
+        const brokerHost = "raspberrypi-https.at.remote.it";
+        const brokerPort = 33000; 
+        // ---------------------------------------------------------------------------------
 
         const clientId = "github-pages-test-" + Math.random().toString(16).substr(2, 8);
-        const topic = "rpi/test"; 
+        const topic = "rpi/test";
         const messagePayload = "Hello from GitHub Pages!";
 
         let client;
 
         function connectMqtt() {
-            client = new Paho.Client(brokerHost, brokerPort, clientId); // "/mqtt" is common for Mosquitto WebSockets, keep it unless you've changed it
+            client = new Paho.Client(brokerHost, brokerPort, "/mqtt", clientId);
 
             client.onConnectionLost = onConnectionLost;
             client.onMessageArrived = onMessageArrived;
@@ -42,8 +42,8 @@
             const connectOptions = {
                 onSuccess: onConnectSuccess,
                 onFailure: onFailure,
-                useSSL: true, // Use SSL because Remote.it provides WSS
-                cleanSession: true // Start fresh session each time
+                useSSL: true, 
+                cleanSession: true
             };
 
             console.log(`Attempting to connect to wss://${brokerHost}:${brokerPort}/mqtt`);
@@ -51,31 +51,30 @@
         }
 
         function onConnectSuccess() {
-            console.log("Connected to MQTT broker via Remote.it!");
+            console.log("Connected to MQTT broker");
             document.getElementById("status").innerText = "Status: Connected!";
         }
 
         function onFailure(responseObject) {
-            console.error("MQTT Connection failed: " + responseObject.errorMessage);
+            console.error("MQTT Connection failed: ", responseObject);
             document.getElementById("status").innerText = "Status: Connection Failed! Check console for details.";
         }
 
         function onConnectionLost(responseObject) {
             if (responseObject.errorCode !== 0) {
-                console.log("Connection lost: " + responseObject.errorMessage);
+                console.log("Connection lost: ", responseObject);
                 document.getElementById("status").innerText = "Status: Disconnected. Attempting reconnect...";
-                setTimeout(connectMqtt, 5000); // Attempt to reconnect after 5 seconds
+                setTimeout(connectMqtt, 5000);
             }
         }
 
         function onMessageArrived(message) {
-            // This won't be used for sending, but included for completeness
             console.log(`Message arrived: Topic='${message.destinationName}', Payload='${message.payloadString}'`);
         }
 
         function sendMessage() {
             if (client && client.isConnected()) {
-                const message = new Paho.Message(messagePayload);
+                const message = new Paho.Message(messagePayload); // Corrected Paho.Message usage
                 message.destinationName = topic;
                 client.send(message);
                 console.log(`Sent message: "${messagePayload}" to topic "${topic}"`);
@@ -86,10 +85,8 @@
             }
         }
 
-        // Initialize connection when page loads
         document.addEventListener("DOMContentLoaded", () => {
             connectMqtt();
-
             const button = document.getElementById("sendMessageButton");
             if (button) {
                 button.addEventListener("click", sendMessage);
