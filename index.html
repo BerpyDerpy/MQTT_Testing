@@ -1,78 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>MQTT Control Panel</title>
+    <title>Dashboard</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-    <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 2em; }
-        #status { margin-bottom: 1em; padding: 0.5em; border-radius: 4px; }
-        .connected { background-color: #d4edda; color: #155724; }
-        .disconnected { background-color: #f8d7da; color: #721c24; }
-        .controls { display: flex; flex-direction: column; gap: 10px; }
-        button { padding: 10px 15px; font-size: 16px; cursor: pointer; }
-    </style>
 </head>
 <body>
-    <h1>MQTT Control</h1>
-    <div id="status">Connecting...</div>
-
-    <div class="controls">
-        <button id="onButton">Turn LED ON</button>
-        <button id="offButton">Turn LED OFF</button>
-    </div>
-
+    <button onclick="sendCommand('LED_ON')">Turn LED On</button>
+    <button onclick="sendCommand('LED_OFF')">Turn LED Off</button>
+    
     <script>
-        // --- Configuration ---
-        const remoteItUrl = 'raspberrypi-mosquitto-web.at.remote.it:33000'; 
-
+        const client = mqtt.connect('wss://b0a3e46d97c94c7cb0eb59cd9684143c.s1.eu.hivemq.cloud:8884/mqtt', {
+            username: 'raspi02W',
+            password: 'Anakonda1#'
+        });
         
-        const brokerUrl = `wss://${remoteItUrl}`;
-
-        // --- MQTT Client Setup ---
-        const options = {
-            clientId: 'github_pages_' + Math.random().toString(16).substr(2, 8),
-        };
-
-        const statusDiv = document.getElementById('status');
-        const client = mqtt.connect(brokerUrl, options);
-
-        client.on('connect', () => {
-            console.log('Connected to MQTT broker!');
-            statusDiv.textContent = 'Connected';
-            statusDiv.className = 'connected';
-        });
-
-        client.on('error', (err) => {
-            console.error('Connection error: ', err);
-            statusDiv.textContent = `Error: ${err.message}. Check the browser console (F12) for details.`;
-            statusDiv.className = 'disconnected';
-            client.end();
-        });
-
-        client.on('reconnect', () => {
-            console.log('Reconnecting...');
-            statusDiv.textContent = 'Reconnecting...';
-            statusDiv.className = 'disconnected';
-        });
-
-        // --- Button Controls ---
-        document.getElementById('onButton').addEventListener('click', () => {
-            if (client.connected) {
-                client.publish('home/livingroom/led', 'ON');
-                console.log('Published ON to home/livingroom/led');
-            } else {
-                alert('Not connected to MQTT broker.');
-            }
-        });
-
-        document.getElementById('offButton').addEventListener('click', () => {
-            if (client.connected) {
-                client.publish('home/livingroom/led', 'OFF');
-                console.log('Published OFF to home/livingroom/led');
-            } else {
-                alert('Not connected to MQTT broker.');
-            }
-        });
+        function sendCommand(command) {
+            client.publish('raspberry-pi/commands', command);
+        }
     </script>
 </body>
 </html>
