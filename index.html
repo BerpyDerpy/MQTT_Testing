@@ -34,7 +34,7 @@
         let client;
 
         function connectMqtt() {
-            client = new Paho.Client(brokerHost, brokerPort, "", clientId); // "/mqtt" is common for Mosquitto WebSockets, keep it unless you've changed it
+            client = new Paho.Client(brokerHost, brokerPort, clientId); // "/mqtt" is common for Mosquitto WebSockets, keep it unless you've changed it
 
             client.onConnectionLost = onConnectionLost;
             client.onMessageArrived = onMessageArrived;
