@@ -34,7 +34,7 @@
         let client;
 
         function connectMqtt() {
-            client = new Paho.MQTT.Client(brokerHost, brokerPort, "/mqtt", clientId); // "/mqtt" is common for Mosquitto WebSockets, keep it unless you've changed it
+            client = new Paho.Client(brokerHost, brokerPort, "/mqtt", clientId); // "/mqtt" is common for Mosquitto WebSockets, keep it unless you've changed it
 
             client.onConnectionLost = onConnectionLost;
             client.onMessageArrived = onMessageArrived;
@@ -75,7 +75,7 @@
 
         function sendMessage() {
             if (client && client.isConnected()) {
-                const message = new Paho.MQTT.Message(messagePayload);
+                const message = new Paho.Message(messagePayload);
                 message.destinationName = topic;
                 client.send(message);
                 console.log(`Sent message: "${messagePayload}" to topic "${topic}"`);
