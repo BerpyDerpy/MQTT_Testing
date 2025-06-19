@@ -3,46 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buzzer</title>
+    <title>MQTT Test Dashboard</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        #videoStream { width: 640px; height: 480px; border: 1px solid black; }
-        .controls button { margin: 10px; padding: 15px 30px; font-size: 1.2em; }
-        .buzzer-controls button { background-color: #4CAF50; color: white; border: none; cursor: pointer; }
-        .buzzer-controls button.off { background-color: #f44336; }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .big-button {
+            background: #28a745;
+            font-size: 24px;
+            padding: 20px 40px;
+            margin: 20px 0;
+            width: 100%;
+        }
+        
+        .big-button:hover {
+            background: #1e7e34;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .log {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            height: 200px;
+            overflow-y: scroll;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
-    <h1>Buzzer Test</h1>
-
-    <div class="video-container">
-        <h2>Live Video Feed</h2>
-        <img id="videoStream" src="https://raspberrypi-camera-server.at.remote.it:5000" alt="Live Video Stream">
-    </div>
-
-    <div class="controls">
-        <h2>Buzzer Controls</h2>
-        <div class="buzzer-controls">
-            <button onclick="buzzer('buzz')">Buzz</button>
-            <button onclick="buzzer('on')">Buzzer On</button>
-            <button onclick="buzzer('off')">Buzzer Off</button>
+    <div class="container">
+        <h1>🔧 MQTT Connection Test</h1>
+        
+        <div class="form-group">
+            <label for="brokerUrl">remote.it URL (replace with yours)</label>
+            <input type="text" id="brokerUrl" placeholder="wss://abc123.remote.it" value="wss://abc123.remote.it">
+            <small>Get this from: sudo remoteit status</small>
         </div>
+        
+        <button onclick="connect()" id="connectBtn">Connect to Pi</button>
+        <div id="status" class="status disconnected">Not Connected</div>
+        
+        <div id="testSection" style="display: none;">
+            <h2>Test Communication</h2>
+            <button class="big-button" onclick="sendTestMessage()">
+                📡 Send Test Message to Pi
+            </button>
+            <p>Click the button above, then check your Pi's SSH terminal!</p>
+        </div>
+        
+        <div class="log" id="log">Waiting for connection...</div>
     </div>
-
-    <p id="status">Connecting to MQTT...</p>
 
     <script>
-       
-        const client = mqtt.connect('https://raspberrypi-rover-mqtt.at.remote.it:33000')
-
-        function buzzer(action, duration = 0.5) {
-        const message = JSON.stringify({action, duration})
-        client.publish('rover/buzzer', message)
+        let client = null;
+        let isConnected = false;
+        
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
         }
-
-        // Initialize MQTT connection when the page loads
-        document.addEventListener('DOMContentLoaded', connectMqtt);
+        
+        function connect() {
+            const brokerUrl = document.getElementById('brokerUrl').value;
+            
+            if (!brokerUrl) {
+                alert('Please enter your remote.it URL');
+                return;
+            }
+            
+            log('🔌 Attempting to connect...');
+            
+            try {
+                // Simple connection - no authentication for testing
+                client = mqtt.connect(brokerUrl, {
+                    reconnectPeriod: 5000,
+                    connectTimeout: 10000
+                });
+                
+                client.on('connect', function () {
+                    isConnected = true;
+                    updateUI();
+                    log('✅ Connected to MQTT broker via remote.it!');
+                    log('💡 Connection successful! You can now test messaging.');
+                });
+                
+                client.on('message', function (topic, message) {
+                    const msg = message.toString();
+                    log(`📨 Received: ${topic} -> ${msg}`);
+                });
+                
+                client.on('error', function (error) {
+                    log(`❌ Connection error: ${error.message}`);
+                    log('💡 Check your remote.it URL and make sure the service is running');
+                });
+                
+                client.on('close', function () {
+                    isConnected = false;
+                    updateUI();
+                    log('❌ Disconnected from broker');
+                });
+                
+            } catch (error) {
+                log(`❌ Failed to connect: ${error.message}`);
+            }
+        }
+        
+        function updateUI() {
+            const connectBtn = document.getElementById('connectBtn');
+            const status = document.getElementById('status');
+            const testSection = document.getElementById('testSection');
+            
+            if (isConnected) {
+                connectBtn.textContent = 'Connected ✅';
+                connectBtn.disabled = true;
+                status.textContent = 'Connected to Raspberry Pi';
+                status.className = 'status connected';
+                testSection.style.display = 'block';
+            } else {
+                connectBtn.textContent = 'Connect to Pi';
+                connectBtn.disabled = false;
+                status.textContent = 'Not Connected';
+                status.className = 'status disconnected';
+                testSection.style.display = 'none';
+            }
+        }
+        
+        function sendTestMessage() {
+            if (!isConnected || !client) {
+                alert('Not connected to broker');
+                return;
+            }
+            
+            const message = `Hello from dashboard! Time: ${new Date().toLocaleTimeString()}`;
+            client.publish('test/button', message);
+            log(`📤 Sent test message: ${message}`);
+            log('👀 Check your Pi terminal running: mosquitto_sub -h 127.0.0.1 -t "test/button"');
+        }
+        
+        // Initialize
+        log('Ready! Enter your remote.it URL and click Connect.');
+        updateUI();
     </script>
 </body>
 </html>
