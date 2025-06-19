@@ -1,22 +1,217 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Dashboard</title>
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT Test Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin: 10px 0;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .settings {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .logs {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
 </head>
 <body>
-    <button onclick="sendCommand('LED_ON')">Turn LED On</button>
-    <button onclick="sendCommand('LED_OFF')">Turn LED Off</button>
+    <div class="container">
+        <h1>🚀 MQTT Test Dashboard</h1>
+        
+        <div id="status" class="status disconnected">
+            ❌ Disconnected
+        </div>
+        
+        <button id="connectBtn" onclick="connectMQTT()">Connect to MQTT</button>
+        <button id="testBtn" onclick="sendTestMessage()" disabled>Send Test Message</button>
+        
+        <div class="settings">
+            <h3>HiveMQ Settings</h3>
+            <input type="text" id="brokerUrl" placeholder="your-cluster.s1.eu.hivemq.cloud" value="">
+            <input type="text" id="username" placeholder="Username" value="">
+            <input type="password" id="password" placeholder="Password" value="">
+            <input type="text" id="topic" placeholder="Topic" value="test/button">
+        </div>
+        
+        <div class="logs">
+            <h4>📋 Logs:</h4>
+            <div id="logArea"></div>
+        </div>
+    </div>
+
+    <!-- MQTT.js library -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     
     <script>
-        const client = mqtt.connect('wss://b0a3e46d97c94c7cb0eb59cd9684143c.s1.eu.hivemq.cloud:8884/mqtt', {
-            username: 'raspi02W',
-            password: 'Anakonda1#'
-        });
+        let client = null;
+        let isConnected = false;
         
-        function sendCommand(command) {
-            client.publish('raspberry-pi/commands', command);
+        function log(message) {
+            const logArea = document.getElementById('logArea');
+            const timestamp = new Date().toLocaleTimeString();
+            logArea.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logArea.scrollTop = logArea.scrollTop + 1000;
         }
+        
+        function updateStatus(connected) {
+            const statusEl = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const testBtn = document.getElementById('testBtn');
+            
+            if (connected) {
+                statusEl.className = 'status connected';
+                statusEl.textContent = '✅ Connected';
+                connectBtn.textContent = 'Disconnect';
+                testBtn.disabled = false;
+                isConnected = true;
+            } else {
+                statusEl.className = 'status disconnected';
+                statusEl.textContent = '❌ Disconnected';
+                connectBtn.textContent = 'Connect to MQTT';
+                testBtn.disabled = true;
+                isConnected = false;
+            }
+        }
+        
+        function connectMQTT() {
+            if (isConnected) {
+                // Disconnect
+                if (client) {
+                    client.end();
+                    client = null;
+                }
+                updateStatus(false);
+                log('Disconnected from MQTT broker');
+                return;
+            }
+            
+            // Get connection details
+            const brokerUrl = document.getElementById('brokerUrl').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (!brokerUrl || !username || !password) {
+                alert('Please fill in all connection details!');
+                return;
+            }
+            
+            // Connect
+            log('Connecting to MQTT broker...');
+            
+            const wsUrl = `wss://${brokerUrl}:8884/mqtt`;
+            
+            client = mqtt.connect(wsUrl, {
+                username: username,
+                password: password,
+                reconnectPeriod: 0 // Disable automatic reconnection for this test
+            });
+            
+            client.on('connect', function() {
+                log('✅ Connected to MQTT broker successfully!');
+                updateStatus(true);
+            });
+            
+            client.on('error', function(error) {
+                log('❌ Connection error: ' + error.message);
+                updateStatus(false);
+            });
+            
+            client.on('close', function() {
+                log('📡 Connection closed');
+                updateStatus(false);
+            });
+            
+            client.on('offline', function() {
+                log('📵 Client went offline');
+                updateStatus(false);
+            });
+        }
+        
+        function sendTestMessage() {
+            if (!client || !isConnected) {
+                alert('Not connected to MQTT broker!');
+                return;
+            }
+            
+            const topic = document.getElementById('topic').value || 'test/button';
+            const message = 'BUTTON_PRESSED';
+            
+            client.publish(topic, message, { qos: 0 }, function(error) {
+                if (error) {
+                    log('❌ Failed to send message: ' + error.message);
+                } else {
+                    log(`📤 Message sent to topic "${topic}": ${message}`);
+                }
+            });
+        }
+        
+        // Initialize
+        log('Dashboard loaded. Enter your HiveMQ details and click Connect.');
     </script>
 </body>
 </html>
