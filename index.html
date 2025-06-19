@@ -3,228 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MQTT Test Dashboard</title>
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <title>MQTT Test</title>
+    <script src="https://unpkg.com/paho-mqtt@1.1.0/paho-mqtt.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 50px auto;
-            padding: 20px;
-            background: #f0f0f0;
-        }
-        
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        
-        .form-group {
-            margin-bottom: 15px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        
-        input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 5px;
-        }
-        
-        button:hover {
-            background: #0056b3;
-        }
-        
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        
-        .big-button {
-            background: #28a745;
-            font-size: 24px;
-            padding: 20px 40px;
-            margin: 20px 0;
-            width: 100%;
-        }
-        
-        .big-button:hover {
-            background: #1e7e34;
-        }
-        
-        .status {
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-            font-weight: bold;
-            text-align: center;
-        }
-        
-        .connected {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .disconnected {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .log {
-            background: #000;
-            color: #00ff00;
-            padding: 15px;
-            border-radius: 5px;
-            height: 200px;
-            overflow-y: scroll;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            margin-top: 20px;
-        }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background-color: #f0f0f0; }
+        .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
+        h1 { color: #333; margin-bottom: 20px; }
+        button { background-color: #007bff; color: white; padding: 12px 25px; border: none; border-radius: 5px; font-size: 1.1em; cursor: pointer; transition: background-color 0.3s ease; }
+        button:hover { background-color: #0056b3; }
+        #status { margin-top: 20px; font-weight: bold; color: #555; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔧 MQTT Connection Test</h1>
-        
-        <div class="form-group">
-            <label for="brokerUrl">remote.it URL (replace with yours)</label>
-            <input type="text" id="brokerUrl" placeholder="wss://abc123.remote.it" value="wss://abc123.remote.it">
-            <small>Get this from: sudo remoteit status</small>
-        </div>
-        
-        <button onclick="connect()" id="connectBtn">Connect to Pi</button>
-        <div id="status" class="status disconnected">Not Connected</div>
-        
-        <div id="testSection" style="display: none;">
-            <h2>Test Communication</h2>
-            <button class="big-button" onclick="sendTestMessage()">
-                📡 Send Test Message to Pi
-            </button>
-            <p>Click the button above, then check your Pi's SSH terminal!</p>
-        </div>
-        
-        <div class="log" id="log">Waiting for connection...</div>
+        <h1>Send Message to Pi</h1>
+        <button id="sendMessageButton">Send MQTT Test Message</button>
+        <div id="status">Connecting...</div>
     </div>
 
     <script>
-        let client = null;
-        let isConnected = false;
-        
-        function log(message) {
-            const logDiv = document.getElementById('log');
-            const timestamp = new Date().toLocaleTimeString();
-            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
-            logDiv.scrollTop = logDiv.scrollHeight;
+       
+        const brokerHost = "raspberrypi-tcp.at.remote.it"; 
+        const brokerPort = 33000;
+        // ---------------------------------------------------------------
+
+        const clientId = "github-pages-test-" + Math.random().toString(16).substr(2, 8);
+        const topic = "rpi/test"; 
+        const messagePayload = "Hello from GitHub Pages!";
+
+        let client;
+
+        function connectMqtt() {
+            client = new Paho.MQTT.Client(brokerHost, brokerPort, "/mqtt", clientId); // "/mqtt" is common for Mosquitto WebSockets, keep it unless you've changed it
+
+            client.onConnectionLost = onConnectionLost;
+            client.onMessageArrived = onMessageArrived;
+
+            const connectOptions = {
+                onSuccess: onConnectSuccess,
+                onFailure: onFailure,
+                useSSL: true, // Use SSL because Remote.it provides WSS
+                cleanSession: true // Start fresh session each time
+            };
+
+            console.log(`Attempting to connect to wss://${brokerHost}:${brokerPort}/mqtt`);
+            client.connect(connectOptions);
         }
-        
-        function connect() {
-            const brokerUrl = document.getElementById('brokerUrl').value;
-            
-            if (!brokerUrl) {
-                alert('Please enter your remote.it URL');
-                return;
-            }
-            
-            log('🔌 Attempting to connect...');
-            
-            try {
-                // Simple connection - no authentication for testing
-                client = mqtt.connect(brokerUrl, {
-                    reconnectPeriod: 5000,
-                    connectTimeout: 10000
-                });
-                
-                client.on('connect', function () {
-                    isConnected = true;
-                    updateUI();
-                    log('✅ Connected to MQTT broker via remote.it!');
-                    log('💡 Connection successful! You can now test messaging.');
-                });
-                
-                client.on('message', function (topic, message) {
-                    const msg = message.toString();
-                    log(`📨 Received: ${topic} -> ${msg}`);
-                });
-                
-                client.on('error', function (error) {
-                    log(`❌ Connection error: ${error.message}`);
-                    log('💡 Check your remote.it URL and make sure the service is running');
-                });
-                
-                client.on('close', function () {
-                    isConnected = false;
-                    updateUI();
-                    log('❌ Disconnected from broker');
-                });
-                
-            } catch (error) {
-                log(`❌ Failed to connect: ${error.message}`);
+
+        function onConnectSuccess() {
+            console.log("Connected to MQTT broker via Remote.it!");
+            document.getElementById("status").innerText = "Status: Connected!";
+        }
+
+        function onFailure(responseObject) {
+            console.error("MQTT Connection failed: " + responseObject.errorMessage);
+            document.getElementById("status").innerText = "Status: Connection Failed! Check console for details.";
+        }
+
+        function onConnectionLost(responseObject) {
+            if (responseObject.errorCode !== 0) {
+                console.log("Connection lost: " + responseObject.errorMessage);
+                document.getElementById("status").innerText = "Status: Disconnected. Attempting reconnect...";
+                setTimeout(connectMqtt, 5000); // Attempt to reconnect after 5 seconds
             }
         }
-        
-        function updateUI() {
-            const connectBtn = document.getElementById('connectBtn');
-            const status = document.getElementById('status');
-            const testSection = document.getElementById('testSection');
-            
-            if (isConnected) {
-                connectBtn.textContent = 'Connected ✅';
-                connectBtn.disabled = true;
-                status.textContent = 'Connected to Raspberry Pi';
-                status.className = 'status connected';
-                testSection.style.display = 'block';
+
+        function onMessageArrived(message) {
+            // This won't be used for sending, but included for completeness
+            console.log(`Message arrived: Topic='${message.destinationName}', Payload='${message.payloadString}'`);
+        }
+
+        function sendMessage() {
+            if (client && client.isConnected()) {
+                const message = new Paho.MQTT.Message(messagePayload);
+                message.destinationName = topic;
+                client.send(message);
+                console.log(`Sent message: "${messagePayload}" to topic "${topic}"`);
+                document.getElementById("status").innerText = `Sent: "${messagePayload}" to "${topic}"`;
             } else {
-                connectBtn.textContent = 'Connect to Pi';
-                connectBtn.disabled = false;
-                status.textContent = 'Not Connected';
-                status.className = 'status disconnected';
-                testSection.style.display = 'none';
+                console.warn("Client not connected. Cannot send message.");
+                document.getElementById("status").innerText = "Status: Not Connected. Click Connect/Reload.";
             }
         }
-        
-        function sendTestMessage() {
-            if (!isConnected || !client) {
-                alert('Not connected to broker');
-                return;
+
+        // Initialize connection when page loads
+        document.addEventListener("DOMContentLoaded", () => {
+            connectMqtt();
+
+            const button = document.getElementById("sendMessageButton");
+            if (button) {
+                button.addEventListener("click", sendMessage);
             }
-            
-            const message = `Hello from dashboard! Time: ${new Date().toLocaleTimeString()}`;
-            client.publish('test/button', message);
-            log(`📤 Sent test message: ${message}`);
-            log('👀 Check your Pi terminal running: mosquitto_sub -h 127.0.0.1 -t "test/button"');
-        }
-        
-        // Initialize
-        log('Ready! Enter your remote.it URL and click Connect.');
-        updateUI();
+        });
     </script>
 </body>
 </html>
